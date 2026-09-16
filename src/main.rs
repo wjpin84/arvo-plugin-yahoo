@@ -18,7 +18,7 @@ use arvo_yfinance::Yahoo;
 const DEFAULT_ADDR: &str = "127.0.0.1:50052";
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let addr: SocketAddr = std::env::var("ARVO_PLUGIN_ADDR").unwrap_or_else(|_| DEFAULT_ADDR.to_owned()).parse()?;
     let plugin = Served::new(
         "yahoo",
@@ -26,7 +26,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         env!("CARGO_PKG_VERSION"),
         vec![Box::new(Yahoo::new()), Box::new(Yahoo::total_return())],
     );
-    println!("arvo-plugin-yahoo serving {SERVICE} at {addr}");
+    // stderr, not stdout: stdout's first line is the handshake `serve` prints
+    // once it is listening, which Arvo's supervisor reads (ADR-0023).
+    eprintln!("arvo-plugin-yahoo serving {SERVICE} at {addr}");
     serve(addr, plugin).await?;
     Ok(())
 }
